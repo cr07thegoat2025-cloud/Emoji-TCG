@@ -36,8 +36,47 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  var owned by remember{mutableStateOf(setOf(0,1,2,5,8,10,12,15,20,25,30,40))}
  var team by remember{mutableStateOf(listOf(0,1,2))};var wins by remember{mutableIntStateOf(0)}
  var note by remember{mutableStateOf("Welcome back. Build your team and play.")};var daily by remember{mutableStateOf(false)}
- var mode by remember{mutableStateOf("Practice bot")};var hp1 by remember{mutableIntStateOf(100)};var hp2 by remember{mutableIntStateOf(100)};var turn by remember{mutableIntStateOf(0)};var ended by remember{mutableStateOf(false)}
- val fighter=cards[team.firstOrNull()?:0]
+ var battleStarted by remember{mutableStateOf(false)}
+ var playerHp by remember{mutableIntStateOf(300)};var botHp by remember{mutableIntStateOf(300)}
+ var playerDeck by remember{mutableStateOf(listOf<Int>())};var playerHand by remember{mutableStateOf(listOf<Int>())};var playerDraw by remember{mutableStateOf(listOf<Int>())};var playerDiscard by remember{mutableStateOf(listOf<Int>())}
+ var botHand by remember{mutableStateOf(listOf<Int>())};var botDraw by remember{mutableStateOf(listOf<Int>())};var botDiscard by remember{mutableStateOf(listOf<Int>())}
+ var selectedCard by remember{mutableIntStateOf(-1)};var battleTurn by remember{mutableStateOf("player")};var battleOver by remember{mutableStateOf(false)};var battleMessage by remember{mutableStateOf("Equip five cards, then start a battle.")};var battleWinner by remember{mutableStateOf("")}
+ fun drawOne(hand:List<Int>,pile:List<Int>,discard:List<Int>):Triple<List<Int>,List<Int>,List<Int>>{
+   val readyPile=if(pile.isEmpty())discard.shuffled() else pile
+   val readyDiscard=if(pile.isEmpty())emptyList() else discard
+   if(readyPile.isEmpty())return Triple(hand,readyPile,readyDiscard)
+   return Triple(hand+readyPile.first(),readyPile.drop(1),readyDiscard)
+ }
+ fun startBattle(){
+   if(team.size<5){battleMessage="Equip all five cards in My cards before starting.";return}
+   val p=team.take(5).shuffled();val b=cards.filter{it.id !in p}.shuffled().take(5).map{it.id}.shuffled()
+   playerDeck=p;playerHand=p.take(3);playerDraw=p.drop(3);playerDiscard=emptyList()
+   botHand=b.take(3);botDraw=b.drop(3);botDiscard=emptyList()
+   playerHp=300;botHp=300;selectedCard=-1;battleTurn="player";battleOver=false;battleWinner="";battleStarted=true
+   battleMessage="Your turn. Choose a card from your hand and play it."
+ }
+ LaunchedEffect(battleTurn,battleStarted,battleOver){
+   if(battleStarted && battleTurn=="bot" && !battleOver){
+     kotlinx.coroutines.delay(850)
+     var h=botHand;var d=botDraw;var disc=botDiscard
+     val pulled=drawOne(h,d,disc);h=pulled.first;d=pulled.second;disc=pulled.third
+     if(h.isNotEmpty()){
+       val chosen=h.map{cards[it]}.maxBy{it.attack}
+       h=h-chosen.id;disc=disc+chosen.id
+       botHp=botHp.coerceAtLeast(0)
+       playerHp=(playerHp-chosen.attack).coerceAtLeast(0)
+       battleMessage="Bot played ${chosen.emoji} ${chosen.name} and dealt ${chosen.attack} damage."
+     }else battleMessage="The bot has no cards to play."
+     botHand=h;botDraw=d;botDiscard=disc
+     if(playerHp<=0){battleOver=true;battleWinner="BOT";battleMessage="The bot won this match."}
+     else{
+       val next=drawOne(playerHand,playerDraw,playerDiscard)
+       playerHand=next.first;playerDraw=next.second;playerDiscard=next.third
+       battleTurn="player";selectedCard=-1
+       if(next.first.isNotEmpty())battleMessage += " Your turn — you drew a card."
+     }
+   }
+ }
  MaterialTheme(colorScheme=lightColorScheme(primary=accent,background=bg,surface=paper,onSurface=ink)){
  Scaffold(containerColor=bg,bottomBar={NavigationBar(containerColor=paper,tonalElevation=0.dp){listOf("Home","Cards","Battle","Packs","Shop").forEach{p->NavigationBarItem(selected=page==p,onClick={page=p},icon={Text(when(p){"Home"->"⌂";"Cards"->"▤";"Battle"->"⚔";"Packs"->"▧";else->"♧"},fontSize=20.sp)},label={Text(p,fontSize=10.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=accent,selectedTextColor=accent,indicatorColor=accent.copy(alpha=.12f),unselectedIconColor=muted,unselectedTextColor=muted))}}}){pad->
  Column(Modifier.fillMaxSize().padding(pad)){
@@ -59,24 +98,69 @@ class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:
  }
  }
  "Battle"->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)){
- PageTitle("Battle club","Play solo or challenge someone beside you.")
- Text("MATCH TYPE",fontSize=10.sp,color=muted,fontWeight=FontWeight.Bold)
- Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.padding(vertical=8.dp)){listOf("Practice bot","Pass & play").forEach{FilterChip(selected=mode==it,onClick={mode=it;hp1=100;hp2=100;turn=0;ended=false;note="New match ready."},label={Text(it,fontSize=11.sp)})}}
- Text(if(mode=="Pass & play")"Two players • one phone" else "Your team vs the training bot",fontSize=11.sp,color=muted)
- Spacer(Modifier.height(13.dp));BattleSide(if(mode=="Pass & play")"PLAYER 2" else "TRAINING BOT","🤡",hp2)
- Box(Modifier.fillMaxWidth().padding(10.dp),contentAlignment=Alignment.Center){Text("VS",fontSize=18.sp,fontWeight=FontWeight.Black,color=accent)}
- BattleSide("PLAYER 1",fighter.emoji,hp1)
- Text(note,Modifier.fillMaxWidth().padding(top=12.dp).clip(RoundedCornerShape(10.dp)).background(paper).padding(12.dp),fontSize=12.sp,color=ink)
- Spacer(Modifier.height(10.dp));Button(onClick={
- if(ended){hp1=100;hp2=100;turn=0;ended=false;note="New match. Player 1 goes first."}
- else if(turn%2==0){hp2=(hp2-fighter.attack).coerceAtLeast(0);note="Player 1 used "+fighter.name+"'s attack!";turn++}
- else{hp1=(hp1-24).coerceAtLeast(0);note=if(mode=="Pass & play")"Player 2 attacks!" else "The bot hits back!";turn++}
- if(hp1==0||hp2==0){ended=true;if(hp2==0){wins++;coins+=100;note="Player 1 wins! +100 coins."}else note="Player 2 wins this round."}
- },modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=accent)){Text(if(ended)"Play again" else if(turn%2==0)"Player 1 attack" else if(mode=="Pass & play")"Player 2 attack" else "Bot turn")}
- if(mode=="Pass & play")Text("Pass the phone after each turn.",color=muted,fontSize=10.sp,modifier=Modifier.padding(top=8.dp))
- Spacer(Modifier.height(18.dp));Text("ONLINE MATCHES",fontWeight=FontWeight.Bold,color=ink,fontSize=13.sp);Text("Online rooms need a shared game server. This version includes two-player pass-and-play; online matchmaking still needs backend setup.",color=muted,fontSize=11.sp)
+ PageTitle("Battle club","Build a five-card deck. Draw, choose and attack.")
+ if(!battleStarted){
+   Spacer(Modifier.height(12.dp))
+   Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFF292D2B)).padding(18.dp)){
+     Column{
+       Text("YOUR BATTLE DECK",color=Color(0xFFE8B58B),fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp)
+       Spacer(Modifier.height(8.dp))
+       Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){team.take(5).forEach{MiniCard(cards[it],Modifier.weight(1f))}}
+       Spacer(Modifier.height(9.dp))
+       Text(team.size.toString()+" of 5 cards equipped",color=Color.White,fontSize=12.sp)
+       Text("You need five equipped cards to start.",color=Color(0xFFD5CEC3),fontSize=10.sp)
+     }
+   }
+   Spacer(Modifier.height(14.dp))
+   Button(onClick={startBattle()},modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=accent)){Text("Start battle",color=Color.White)}
+   if(team.size<5)Text("Go to My cards and equip two more cards.",color=muted,fontSize=11.sp,modifier=Modifier.padding(top=9.dp))
+   Text(battleMessage,color=muted,fontSize=11.sp,modifier=Modifier.padding(top=12.dp))
+ }else{
+   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+     Text("TRAINING BOT",fontSize=10.sp,fontWeight=FontWeight.Bold,color=muted)
+     Text(if(battleOver)"MATCH OVER" else if(battleTurn=="bot")"BOT TURN" else "YOUR TURN",fontSize=10.sp,fontWeight=FontWeight.Bold,color=accent)
+   }
+   Spacer(Modifier.height(7.dp))
+   BattleSide("BOT • "+botHand.size+" cards in hand","🤖",botHp)
+   Row(Modifier.fillMaxWidth().padding(vertical=9.dp),horizontalArrangement=Arrangement.SpaceBetween){
+     Text("Bot deck: "+botDraw.size+"  •  discard: "+botDiscard.size,fontSize=9.sp,color=muted)
+     Text("VS",fontSize=14.sp,fontWeight=FontWeight.Black,color=accent)
+     Text("Your deck: "+playerDraw.size+"  •  discard: "+playerDiscard.size,fontSize=9.sp,color=muted)
+   }
+   BattleSide("YOU • "+playerHand.size+" cards in hand","😀",playerHp)
+   Text(battleMessage,Modifier.fillMaxWidth().padding(top=12.dp).clip(RoundedCornerShape(10.dp)).background(paper).padding(12.dp),fontSize=12.sp,color=ink)
+   Spacer(Modifier.height(15.dp))
+   Row(verticalAlignment=Alignment.CenterVertically){Text("YOUR HAND",fontWeight=FontWeight.Bold,color=ink,fontSize=13.sp,modifier=Modifier.weight(1f));Text(playerHand.size.toString()+" cards",fontSize=10.sp,color=muted)}
+   Text("Tap a card to select it, then play it.",fontSize=10.sp,color=muted,modifier=Modifier.padding(top=3.dp,bottom=8.dp))
+   if(playerHand.isEmpty())Text("No cards in hand. Your discard pile will be reshuffled when needed.",fontSize=11.sp,color=muted)
+   Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+     playerHand.forEach{id->
+       val c=cards[id];val chosen=selectedCard==id
+       Column(Modifier.width(112.dp).clip(RoundedCornerShape(13.dp)).background(if(chosen)Color(0xFFFFE8DD) else paper).border(if(chosen)2.dp else 1.dp,if(chosen)accent else edge,RoundedCornerShape(13.dp)).clickable{if(battleTurn=="player"&&!battleOver)selectedCard=id}.padding(10.dp)){
+         Text(c.rarity,fontSize=8.sp,color=tier(c.rarity),fontWeight=FontWeight.Bold)
+         Box(Modifier.fillMaxWidth().height(58.dp),contentAlignment=Alignment.Center){Text(c.emoji,fontSize=38.sp)}
+         Text(c.name,fontSize=11.sp,fontWeight=FontWeight.Bold,color=ink,maxLines=1)
+         Text("⚔ "+c.attack+" attack",fontSize=9.sp,color=accent,fontWeight=FontWeight.Bold)
+         Text("♥ "+c.hp+" HP",fontSize=9.sp,color=muted)
+         if(chosen)Text("SELECTED",fontSize=8.sp,color=accent,fontWeight=FontWeight.Black)
+       }
+     }
+   }
+   Spacer(Modifier.height(12.dp))
+   Button(onClick={
+     if(selectedCard in playerHand && battleTurn=="player" && !battleOver){
+       val c=cards[selectedCard];botHp=(botHp-c.attack).coerceAtLeast(0)
+       playerHand=playerHand-selectedCard;playerDiscard=playerDiscard+selectedCard
+       selectedCard=-1
+       battleMessage="You played ${c.emoji} ${c.name} and dealt ${c.attack} damage."
+       if(botHp<=0){battleOver=true;battleWinner="YOU";wins++;coins+=100;battleMessage="You won! +100 coins."}
+       else battleTurn="bot"
+     }
+   },enabled=selectedCard in playerHand && battleTurn=="player" && !battleOver,modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=accent,disabledContainerColor=edge)){Text(if(battleOver)"Match finished" else if(battleTurn=="bot")"Bot is playing…" else "Play selected card",color=if(selectedCard in playerHand && battleTurn=="player" && !battleOver)Color.White else muted)}
+   if(battleTurn=="bot"&&!battleOver)Text("The bot is choosing a card and taking its turn automatically…",fontSize=10.sp,color=muted,modifier=Modifier.padding(top=8.dp))
+   if(battleOver)Button(onClick={battleStarted=false;battleMessage="Ready for another match.";},modifier=Modifier.fillMaxWidth().padding(top=8.dp),colors=ButtonDefaults.outlinedButtonColors(contentColor=accent)){Text("Back to battle setup")}
  }
- "Packs"->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
+} "Packs"->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
  PageTitle("Card packs","A surprise card in every pack.")
  Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFFE8D7C4)),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){Text("✦",fontSize=28.sp,color=accent);Text("THE MIXED PACK",fontSize=22.sp,fontWeight=FontWeight.Black,color=ink);Text("ONE CARD • ANY RARITY",fontSize=9.sp,color=muted);Text("🃏",fontSize=45.sp)}}
  Text(owned.size.toString()+" / "+cards.size+" cards found",fontWeight=FontWeight.Bold,color=ink,modifier=Modifier.padding(top=16.dp));Text("No duplicate cards while there are still new ones to find.",fontSize=11.sp,color=muted)

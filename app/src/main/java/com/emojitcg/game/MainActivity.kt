@@ -5,62 +5,98 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.random.Random
 
-private val bg=Color(0xFF10111B); private val panel=Color(0xFF1B1D2B); private val violet=Color(0xFF9B7BFF); private val gold=Color(0xFFFFC857); private val muted=Color(0xFF9B9DB0)
-data class CardData(val id:Int,val name:String,val emoji:String,val element:String,val rarity:String,val hp:Int,val atk:Int,val move:String)
-private val allCards=listOf(
- CardData(1,"Inferno","🔥","FIRE","RARE",120,60,"Flame Burst"),CardData(2,"Frosty","🥶","ICE","EPIC",150,75,"Freeze Blast"),CardData(3,"Rich Guy","🤑","GOLD","LEGENDARY",180,90,"Golden Strike"),CardData(4,"Demon","😈","DARK","MYTHICAL",200,100,"Shadow Crash"),CardData(5,"Gigachad","🗿","EARTH","RARE",140,55,"Stone Face"),CardData(6,"Lightning","⚡","STORM","EPIC",130,80,"Thunderbolt"),CardData(7,"Sneaky","🥷","DARK","RARE",110,65,"Ninja Rush"),CardData(8,"Angel","😇","LIGHT","LEGENDARY",170,85,"Heavenly Ray"),CardData(9,"Goblin","👺","FIRE","COMMON",90,35,"Bonk"),CardData(10,"Goofy","🤡","CHAOS","COMMON",100,30,"Clown Around"),CardData(11,"Robot","🤖","TECH","COMMON",105,40,"Laser Ping"),CardData(12,"Alien","👽","COSMIC","EPIC",145,70,"UFO Beam"))
-private fun rarity(r:String)=when(r){"MYTHICAL"->Color(0xFFFF65B5);"LEGENDARY"->gold;"EPIC"->violet;"RARE"->Color(0xFF59B8FF);else->Color(0xFF9AA0AA)}
+private val bg=Color(0xFFF4F0E8); private val paper=Color(0xFFFFFCF6); private val ink=Color(0xFF20211F); private val muted=Color(0xFF88877F); private val accent=Color(0xFFD86D52); private val edge=Color(0xFFE3DED3)
+data class GameCard(val id:Int,val emoji:String,val name:String,val type:String,val hp:Int,val attack:Int,val rarity:String)
+private val seeds=listOf(
+"😀" to "Sunny","😎" to "Cool Cat","😂" to "Giggles","🥹" to "Softie","🤩" to "Starstruck","😈" to "Little Devil","👻" to "Ghost","💀" to "Skully","🤖" to "Byte","👽" to "Visitor","🤡" to "Big Top","💩" to "Mr Stink","👹" to "Oni","👺" to "Goblin","🤠" to "Cowpoke","🥷" to "Shadow","🧙" to "Wizard","🧛" to "Vampire","🧟" to "Walker","🧜" to "Siren","🦸" to "Hero","🦹" to "Rogue","🧑‍🚀" to "Cosmo","🧑‍🎤" to "Rockstar","🧑‍🍳" to "Chef",
+"🔥" to "Blaze","💧" to "Drip","🌪️" to "Twister","⚡" to "Volt","❄️" to "Frost","🌈" to "Prism","☀️" to "Sol","🌙" to "Luna","⭐" to "Nova","🌑" to "Eclipse","🍀" to "Lucky","🌵" to "Prickles","🌻" to "Sunny Side","🍄" to "Mushroom","🌊" to "Tide",
+"🐉" to "Dragon","🦊" to "Fox","🐺" to "Wolf","🦁" to "Lion","🐯" to "Tiger","🐸" to "Froggo","🐼" to "Panda","🐻" to "Bear","🐵" to "Monkey","🦄" to "Unicorn","🦋" to "Flutter","🐙" to "Eight","🦈" to "Chomper","🐢" to "Tank","🦖" to "Rex",
+"🍕" to "Pizza Pal","🍉" to "Melon","🍩" to "Doughnut","🍓" to "Berry","🌮" to "Taco","🍔" to "Burger","🍟" to "Fries","🍪" to "Cookie","🍭" to "Lolly","🍜" to "Noodle","💎" to "Gem","👑" to "Royal","💰" to "Richie","🎯" to "Bullseye","🎸" to "Riff","🎮" to "Player One","🚀" to "Rocket","🛸" to "UFO","⚽" to "Striker","🏆" to "Champion",
+"🗿" to "Stone Face","🎃" to "Pumpkin","🧸" to "Teddy","🪄" to "Magic Wand","🧿" to "Watcher","💥" to "Kaboom","❤️" to "Heartbeat","💜" to "Amethyst","🖤" to "Nightfall","💛" to "Goldie","🧊" to "Ice Cube","🪐" to "Orbit","🌋" to "Volcano","🏝️" to "Island","🌌" to "Galaxy","🦇" to "Batty","🕷️" to "Webber","🦂" to "Stinger","🐍" to "Slinky","🦍" to "Gorilla","🐬" to "Dolphin","🦉" to "Owl","🦚" to "Peacock","🦩" to "Flamingo","🐝" to "Buzz","🧠" to "Brainiac","👁️" to "All-Seeing","🫀" to "Pulse","🦾" to "Steel Arm","🧬" to "DNA"
+)
+private val cards=seeds.mapIndexed{i,p->GameCard(i,p.first,p.second,listOf("FIRE","WATER","NATURE","SHADOW","COSMIC","TECH")[i%6],80+(i%7)*15,25+(i%8)*9,when{ i%29==0->"MYTHIC";i%13==0->"LEGENDARY";i%5==0->"EPIC";i%2==0->"RARE";else->"COMMON"})}
+private fun tier(r:String)=when(r){"MYTHIC"->Color(0xFF9D4EDD);"LEGENDARY"->Color(0xFFD19A38);"EPIC"->Color(0xFF5477B8);"RARE"->Color(0xFF4D8B79);else->muted}
+class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{EmojiGame()}}}
 
-class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{GameApp()}}}
-
-@Composable fun GameApp(){
- var tab by rememberSaveable{mutableStateOf("Home")};var coins by rememberSaveable{mutableIntStateOf(500)};var owned by rememberSaveable{mutableStateOf(listOf(1,5,9,10,11))};var activeId by rememberSaveable{mutableIntStateOf(1)};var wins by rememberSaveable{mutableIntStateOf(0)}
- var started by rememberSaveable{mutableStateOf(false)};var playerHp by rememberSaveable{mutableIntStateOf(120)};var enemyHp by rememberSaveable{mutableIntStateOf(130)};var message by rememberSaveable{mutableStateOf("Ready when you are.")}
- val active=allCards.first{it.id==activeId}
- MaterialTheme(colorScheme=darkColorScheme(primary=violet,background=bg,surface=panel)){
- Scaffold(containerColor=bg,bottomBar={NavigationBar(containerColor=panel){listOf("Home","Cards","Battle","Packs","Shop").forEach{item->NavigationBarItem(selected=tab==item,onClick={tab=item},icon={Icon(when(item){"Home"->Icons.Default.Home;"Cards"->Icons.Default.Collections;"Battle"->Icons.Default.SportsEsports;"Packs"->Icons.Default.CardGiftcard;else->Icons.Default.Store},null)},label={Text(item)},colors=NavigationBarItemDefaults.colors(selectedIconColor=violet,selectedTextColor=violet,indicatorColor=violet.copy(alpha=.15f),unselectedIconColor=muted,unselectedTextColor=muted))}}}){pad->
- Column(Modifier.fillMaxSize().padding(pad).padding(horizontal=18.dp)){
- Row(Modifier.fillMaxWidth().padding(vertical=15.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("EMOJI TCG",color=Color.White,fontWeight=FontWeight.Black,fontSize=23.sp,letterSpacing=1.5.sp);Text("COLLECT • BUILD • BATTLE",color=muted,fontSize=10.sp,letterSpacing=2.sp)};Surface(color=panel,shape=RoundedCornerShape(30.dp)){Text("🪙 "+coins,Modifier.padding(horizontal=14.dp,vertical=10.dp),color=gold,fontWeight=FontWeight.Bold)}}
- when(tab){
- "Home"->LazyColumn(verticalArrangement=Arrangement.spacedBy(14.dp),contentPadding=PaddingValues(bottom=16.dp)){
- item{Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(Color(0xFF392A70),Color(0xFF171B36)))).padding(20.dp)){Column{Text("THE EMOJI ARENA",color=Color(0xFFD8CEFF),fontSize=10.sp,letterSpacing=2.sp);Text("Build your\nultimate squad.",color=Color.White,fontSize=31.sp,fontWeight=FontWeight.Black,lineHeight=35.sp);Spacer(Modifier.height(14.dp));Button(onClick={tab="Battle"},colors=ButtonDefaults.buttonColors(containerColor=violet)){Text("BATTLE NOW →",color=Color.White,fontWeight=FontWeight.Bold)}}}}
- item{Row(horizontalArrangement=Arrangement.spacedBy(9.dp)){Stat("CARDS",owned.size.toString()+"/12","🃏",Modifier.weight(1f));Stat("WINS",wins.toString(),"🏆",Modifier.weight(1f));Stat("COINS",coins.toString(),"🪙",Modifier.weight(1f))}}
- item{Text("YOUR SQUAD",color=Color.White,fontWeight=FontWeight.Bold,letterSpacing=1.sp)}
- item{Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(10.dp)){owned.mapNotNull{id->allCards.find{it.id==id}}.forEach{MiniCard(it)}}}
- item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){Action("🎁","Open a pack","Find a new card",{tab="Packs"},Modifier.weight(1f));Action("⚔️","Battle a bot","Earn 120 coins",{tab="Battle"},Modifier.weight(1f))}}
+@Composable private fun EmojiGame(){
+ var page by remember{mutableStateOf("Home")};var coins by remember{mutableIntStateOf(650)}
+ var owned by remember{mutableStateOf(setOf(0,1,2,5,8,10,12,15,20,25,30,40))}
+ var team by remember{mutableStateOf(listOf(0,1,2))};var wins by remember{mutableIntStateOf(0)}
+ var note by remember{mutableStateOf("Welcome back. Build your team and play.")};var daily by remember{mutableStateOf(false)}
+ var mode by remember{mutableStateOf("Practice bot")};var hp1 by remember{mutableIntStateOf(100)};var hp2 by remember{mutableIntStateOf(100)};var turn by remember{mutableIntStateOf(0)};var ended by remember{mutableStateOf(false)}
+ val fighter=cards[team.firstOrNull()?:0]
+ MaterialTheme(colorScheme=lightColorScheme(primary=accent,background=bg,surface=paper,onSurface=ink)){
+ Scaffold(containerColor=bg,bottomBar={NavigationBar(containerColor=paper,tonalElevation=0.dp){listOf("Home","Cards","Battle","Packs","Shop").forEach{p->NavigationBarItem(selected=page==p,onClick={page=p},icon={Text(when(p){"Home"->"⌂";"Cards"->"▤";"Battle"->"⚔";"Packs"->"▧";else->"♧"},fontSize=20.sp)},label={Text(p,fontSize=10.sp)},colors=NavigationBarItemDefaults.colors(selectedIconColor=accent,selectedTextColor=accent,indicatorColor=accent.copy(alpha=.12f),unselectedIconColor=muted,unselectedTextColor=muted))}}}){pad->
+ Column(Modifier.fillMaxSize().padding(pad)){
+ Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=14.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("EMOJI CLUB",fontSize=21.sp,fontWeight=FontWeight.Black,letterSpacing=1.sp,color=ink);Text("COLLECT • TRADE • BATTLE",fontSize=9.sp,letterSpacing=1.5.sp,color=muted)};Surface(color=paper,shape=RoundedCornerShape(30.dp),border=BorderStroke(1.dp,edge)){Text("🪙 "+coins,Modifier.padding(horizontal=13.dp,vertical=8.dp),color=ink,fontWeight=FontWeight.Bold)}}
+ when(page){
+ "Home"->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)){
+ Spacer(Modifier.height(8.dp));Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF292D2B)).padding(22.dp)){Column{Text("A COLLECTION WITH CHARACTER",color=Color(0xFFE8B58B),fontSize=9.sp,letterSpacing=1.5.sp);Spacer(Modifier.height(10.dp));Text("Find your favourites.\nBuild your dream team.",color=Color.White,fontSize=27.sp,fontWeight=FontWeight.Bold,lineHeight=32.sp);Spacer(Modifier.height(17.dp));Button(onClick={page="Battle"},colors=ButtonDefaults.buttonColors(containerColor=accent),shape=RoundedCornerShape(9.dp)){Text("Play a match  →",color=Color.White)}}}
+ Spacer(Modifier.height(16.dp));Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Metric("CARDS",owned.size.toString(),Modifier.weight(1f));Metric("TEAM",team.size.toString()+"/5",Modifier.weight(1f));Metric("WINS",wins.toString(),Modifier.weight(1f))}
+ Spacer(Modifier.height(20.dp));Row(verticalAlignment=Alignment.CenterVertically){Text("YOUR TEAM",fontWeight=FontWeight.Bold,color=ink,modifier=Modifier.weight(1f));Text("EDIT",fontSize=10.sp,color=accent,fontWeight=FontWeight.Bold,modifier=Modifier.clickable{page="Cards"})}
+ Spacer(Modifier.height(9.dp));Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){team.forEach{MiniCard(cards[it],Modifier.weight(1f))}}
+ Spacer(Modifier.height(17.dp));Row(horizontalArrangement=Arrangement.spacedBy(9.dp)){Button(onClick={page="Packs"},modifier=Modifier.weight(1f),colors=ButtonDefaults.buttonColors(containerColor=accent)){Text("Open a pack")};OutlinedButton(onClick={page="Cards"},modifier=Modifier.weight(1f)){Text("My cards",color=ink)}}
+ Text(note,color=muted,fontSize=11.sp,modifier=Modifier.padding(top=12.dp))
  }
- "Cards"->Column{Text("Your collection",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Black);Text(owned.size.toString()+" cards collected • Tap to select your fighter",color=muted,fontSize=12.sp);Spacer(Modifier.height(12.dp));LazyColumn(verticalArrangement=Arrangement.spacedBy(9.dp)){items(owned.mapNotNull{id->allCards.find{it.id==id}}){c->Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(if(c.id==activeId)Color(0xFF30265F)else panel).border(if(c.id==activeId)1.dp else 0.dp,violet,RoundedCornerShape(17.dp)).clickable{activeId=c.id}.padding(13.dp),verticalAlignment=Alignment.CenterVertically){Text(c.emoji,fontSize=38.sp);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(c.name,color=Color.White,fontWeight=FontWeight.Bold);Text(c.element+" • "+c.rarity,color=rarity(c.rarity),fontSize=10.sp);Text(c.move,color=muted,fontSize=11.sp)};Column(horizontalAlignment=Alignment.End){Text(c.hp.toString()+" HP",color=Color.White,fontWeight=FontWeight.Bold);Text("⚔ "+c.atk,color=gold)}}}}}
- "Battle"->Column(horizontalAlignment=Alignment.CenterHorizontally){Text("BOT ARENA",color=Color.White,fontWeight=FontWeight.Black,fontSize=25.sp);Text("Offline practice battle",color=muted,fontSize=11.sp);Spacer(Modifier.height(18.dp));Fighter("🤡","GOOFY BOT",enemyHp,130);Text("VS",color=violet,fontWeight=FontWeight.Black,fontSize=23.sp,modifier=Modifier.padding(10.dp));Fighter(active.emoji,active.name.uppercase()+" • YOU",playerHp,active.hp);Spacer(Modifier.height(14.dp));Text(message,color=Color.White,textAlign=TextAlign.Center,modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(panel).padding(12.dp),fontSize=12.sp);Spacer(Modifier.height(12.dp))
- if(!started||playerHp==0||enemyHp==0)Button(onClick={started=true;playerHp=active.hp;enemyHp=130;message="Go! Use your attack."},modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=violet)){Text("START NEW BATTLE")}
- else Button(onClick={enemyHp=(enemyHp-active.atk).coerceAtLeast(0);if(enemyHp==0){coins+=120;wins++;message="VICTORY! +120 coins. Amazing!";started=false}else{playerHp=(playerHp-28).coerceAtLeast(0);if(playerHp==0){message="DEFEAT! Try again.";started=false}else message=active.move+" dealt "+active.atk+" damage. Bot hit back for 28."}},modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=Color(0xFFE45D68))){Text("⚔ ATTACK",fontWeight=FontWeight.Black)}
- TextButton(onClick={tab="Cards"}){Text("Choose another card",color=muted)}}
- "Packs"->Column(horizontalAlignment=Alignment.CenterHorizontally){Text("BOOSTER PACKS",color=Color.White,fontSize=24.sp,fontWeight=FontWeight.Black);Text("One new emoji character in every pack",color=muted,fontSize=11.sp);Spacer(Modifier.height(22.dp));Box(Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(24.dp)).background(Brush.linearGradient(listOf(Color(0xFF5A3DA0),Color(0xFF171B36)))),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){Text("✨",fontSize=32.sp);Text("EMOJI",color=Color.White,fontSize=35.sp,fontWeight=FontWeight.Black,letterSpacing=4.sp);Text("POWER PACK",color=gold,fontWeight=FontWeight.Bold,letterSpacing=3.sp);Text("1 CARD • 1 SURPRISE",color=Color.White.copy(alpha=.7f),fontSize=10.sp)}};Spacer(Modifier.height(18.dp));Button(onClick={val remaining=allCards.filter{it.id !in owned};if(coins>=150&&remaining.isNotEmpty()){coins-=150;val roll=Random.nextInt(100);val tier=when{roll<3->"MYTHICAL";roll<12->"LEGENDARY";roll<35->"EPIC";roll<70->"RARE";else->"COMMON"};val prize=remaining.filter{it.rarity==tier}.ifEmpty{remaining}.random();owned=owned+prize.id;activeId=prize.id;message="You pulled "+prize.emoji+" "+prize.name+"!"}else if(remaining.isEmpty())message="You collected every card! More coming soon."else message="You need 150 coins."},enabled=coins>=150&&owned.size<allCards.size,modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=violet)){Text("OPEN PACK • 150 🪙",fontWeight=FontWeight.Bold)};Text("Common 30% • Rare 35% • Epic 23% • Legendary 9% • Mythical 3%",color=muted,fontSize=10.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(top=12.dp));Text(message,color=gold,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=15.dp));Text("Packs use earned in-game coins only. No real-money purchases.",color=muted,fontSize=10.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(top=12.dp))}
- else->Column{Text("THE SHOP",color=Color.White,fontSize=25.sp,fontWeight=FontWeight.Black);Text("Free rewards for your next pack",color=muted,fontSize=12.sp);Spacer(Modifier.height(16.dp));Action("🎁","Daily bonus","Claim 100 free coins",{coins+=100;message="100 coins added!"},Modifier.fillMaxWidth());Spacer(Modifier.height(12.dp));Action("🏆","Battle record",wins.toString()+" victories so far",{},Modifier.fillMaxWidth());Spacer(Modifier.height(12.dp));Text("Coins: "+coins,color=gold,fontWeight=FontWeight.Bold)}
+ "Cards"->Column(Modifier.fillMaxSize()){
+ PageTitle("My cards",owned.size.toString()+" collected  •  "+team.size+"/5 equipped")
+ Text("Tap cards to add or remove them from your team.",Modifier.padding(horizontal=20.dp),fontSize=11.sp,color=muted)
+ LazyVerticalGrid(columns=GridCells.Fixed(2),contentPadding=PaddingValues(14.dp),horizontalArrangement=Arrangement.spacedBy(9.dp),verticalArrangement=Arrangement.spacedBy(9.dp)){
+ items(owned.map{cards[it]}){c->CollectionCard(c,c.id in team){if(c.id in team){team=team-c.id;note="Removed "+c.name+" from your team."}else if(team.size<5){team=team+c.id;note="Added "+c.name+" to your team."}else note="Your team is full. Remove one card first."}}
+ }
+ }
+ "Battle"->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=20.dp)){
+ PageTitle("Battle club","Play solo or challenge someone beside you.")
+ Text("MATCH TYPE",fontSize=10.sp,color=muted,fontWeight=FontWeight.Bold)
+ Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.padding(vertical=8.dp)){listOf("Practice bot","Pass & play").forEach{FilterChip(selected=mode==it,onClick={mode=it;hp1=100;hp2=100;turn=0;ended=false;note="New match ready."},label={Text(it,fontSize=11.sp)})}}
+ Text(if(mode=="Pass & play")"Two players • one phone" else "Your team vs the training bot",fontSize=11.sp,color=muted)
+ Spacer(Modifier.height(13.dp));BattleSide(if(mode=="Pass & play")"PLAYER 2" else "TRAINING BOT","🤡",hp2)
+ Box(Modifier.fillMaxWidth().padding(10.dp),contentAlignment=Alignment.Center){Text("VS",fontSize=18.sp,fontWeight=FontWeight.Black,color=accent)}
+ BattleSide("PLAYER 1",fighter.emoji,hp1)
+ Text(note,Modifier.fillMaxWidth().padding(top=12.dp).clip(RoundedCornerShape(10.dp)).background(paper).padding(12.dp),fontSize=12.sp,color=ink)
+ Spacer(Modifier.height(10.dp));Button(onClick={
+ if(ended){hp1=100;hp2=100;turn=0;ended=false;note="New match. Player 1 goes first."}
+ else if(turn%2==0){hp2=(hp2-fighter.attack).coerceAtLeast(0);note="Player 1 used "+fighter.name+"'s attack!";turn++}
+ else{hp1=(hp1-24).coerceAtLeast(0);note=if(mode=="Pass & play")"Player 2 attacks!" else "The bot hits back!";turn++}
+ if(hp1==0||hp2==0){ended=true;if(hp2==0){wins++;coins+=100;note="Player 1 wins! +100 coins."}else note="Player 2 wins this round."}
+ },modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColors(containerColor=accent)){Text(if(ended)"Play again" else if(turn%2==0)"Player 1 attack" else if(mode=="Pass & play")"Player 2 attack" else "Bot turn")}
+ if(mode=="Pass & play")Text("Pass the phone after each turn.",color=muted,fontSize=10.sp,modifier=Modifier.padding(top=8.dp))
+ Spacer(Modifier.height(18.dp));Text("ONLINE MATCHES",fontWeight=FontWeight.Bold,color=ink,fontSize=13.sp);Text("Online rooms need a shared game server. This version includes two-player pass-and-play; online matchmaking still needs backend setup.",color=muted,fontSize=11.sp)
+ }
+ "Packs"->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
+ PageTitle("Card packs","A surprise card in every pack.")
+ Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xFFE8D7C4)),contentAlignment=Alignment.Center){Column(horizontalAlignment=Alignment.CenterHorizontally){Text("✦",fontSize=28.sp,color=accent);Text("THE MIXED PACK",fontSize=22.sp,fontWeight=FontWeight.Black,color=ink);Text("ONE CARD • ANY RARITY",fontSize=9.sp,color=muted);Text("🃏",fontSize=45.sp)}}
+ Text(owned.size.toString()+" / "+cards.size+" cards found",fontWeight=FontWeight.Bold,color=ink,modifier=Modifier.padding(top=16.dp));Text("No duplicate cards while there are still new ones to find.",fontSize=11.sp,color=muted)
+ Button(onClick={val left=cards.filter{it.id !in owned};if(coins<150)note="You need 150 coins." else if(left.isEmpty())note="You found the whole collection!" else{val c=left.random();owned=owned+c.id;coins-=150;note="You found "+c.emoji+" "+c.name+" ("+c.rarity+")!"}},enabled=coins>=150&&owned.size<cards.size,modifier=Modifier.fillMaxWidth().padding(top=17.dp),colors=ButtonDefaults.buttonColors(containerColor=accent)){Text("Open pack • 150 coins")}
+ Text(note,fontSize=11.sp,color=muted,modifier=Modifier.padding(top=12.dp))
+ }
+ else->Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp)){
+ PageTitle("The shop","Use coins to grow your collection.")
+ ShopRow("🎁","Daily coins","100 free coins each day",if(daily)"CLAIMED" else "FREE"){if(!daily){coins+=100;daily=true;note="100 coins added!"}else note="Come back tomorrow."}
+ ShopRow("🃏","Mixed pack","A new card for your collection","150 COINS"){val left=cards.filter{it.id !in owned};if(coins>=150&&left.isNotEmpty()){val c=left.random();coins-=150;owned=owned+c.id;note="You found "+c.emoji+" "+c.name+"!"}else note="Not enough coins or collection complete."}
+ ShopRow("✨","Lucky pack","A better chance at rare cards","300 COINS"){if(coins>=300){coins-=300;val left=cards.filter{it.id !in owned};if(left.isNotEmpty()){val c=left.maxBy{listOf("COMMON","RARE","EPIC","LEGENDARY","MYTHIC").indexOf(it.rarity)+Random.nextInt(0,3)};owned=owned+c.id;note="Lucky pull: "+c.emoji+" "+c.name+"!"}else note="Collection complete."}else note="Not enough coins."}
+ Text("Wallet: "+coins+" coins",fontWeight=FontWeight.Bold,color=accent,modifier=Modifier.padding(top=12.dp));Text(note,fontSize=11.sp,color=muted)
+ }
  }
  }
  }}
 }
-
-@Composable fun Stat(label:String,value:String,emoji:String,modifier:Modifier){Column(modifier.clip(RoundedCornerShape(15.dp)).background(panel).padding(11.dp)){Text(emoji,fontSize=19.sp);Text(value,color=Color.White,fontWeight=FontWeight.Bold,fontSize=16.sp);Text(label,color=muted,fontSize=9.sp,letterSpacing=1.sp)}}
-@Composable fun MiniCard(c:CardData){Column(Modifier.width(105.dp).clip(RoundedCornerShape(15.dp)).background(Brush.linearGradient(listOf(rarity(c.rarity).copy(alpha=.35f),panel))).border(1.dp,rarity(c.rarity).copy(alpha=.7f),RoundedCornerShape(15.dp)).padding(10.dp)){Text(c.emoji,fontSize=34.sp);Text(c.name,color=Color.White,fontWeight=FontWeight.Bold,fontSize=12.sp);Text(c.rarity,color=rarity(c.rarity),fontSize=9.sp,fontWeight=FontWeight.Bold);Text(c.hp.toString()+" HP",color=muted,fontSize=10.sp)}}
-@Composable fun Action(emoji:String,title:String,subtitle:String,onClick:()->Unit,modifier:Modifier){Column(modifier.clip(RoundedCornerShape(16.dp)).background(panel).clickable{onClick()}.padding(14.dp)){Text(emoji,fontSize=26.sp);Text(title,color=Color.White,fontWeight=FontWeight.Bold);Text(subtitle,color=muted,fontSize=11.sp)}}
-@Composable fun Fighter(emoji:String,name:String,hp:Int,max:Int){Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).background(panel).padding(15.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(emoji,fontSize=44.sp);Spacer(Modifier.width(12.dp));Column(Modifier.weight(1f)){Text(name,color=Color.White,fontWeight=FontWeight.Bold);Text("HP "+hp+" / "+max,color=muted,fontSize=11.sp)}};Spacer(Modifier.height(9.dp));LinearProgressIndicator(progress={hp.toFloat()/max.coerceAtLeast(1)},modifier=Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(8.dp)),color=if(hp<40)Color(0xFFFF6262)else Color(0xFF62D69A),trackColor=bg)}}
+@Composable private fun PageTitle(title:String,sub:String){Column(Modifier.padding(horizontal=20.dp,vertical=8.dp)){Text(title,fontSize=27.sp,fontWeight=FontWeight.Black,color=ink);Text(sub,fontSize=12.sp,color=muted)}}
+@Composable private fun Metric(label:String,value:String,modifier:Modifier){Column(modifier.clip(RoundedCornerShape(12.dp)).background(paper).border(1.dp,edge,RoundedCornerShape(12.dp)).padding(11.dp)){Text(value,fontSize=20.sp,fontWeight=FontWeight.Bold,color=ink);Text(label,fontSize=9.sp,color=muted,letterSpacing=.7.sp)}}
+@Composable private fun MiniCard(c:GameCard,modifier:Modifier){Column(modifier.clip(RoundedCornerShape(12.dp)).background(paper).border(1.dp,edge,RoundedCornerShape(12.dp)).padding(8.dp)){Text(c.emoji,fontSize=29.sp);Text(c.name,fontSize=10.sp,fontWeight=FontWeight.Bold,color=ink,maxLines=1);Text(c.rarity,fontSize=8.sp,color=tier(c.rarity))}}
+@Composable private fun CollectionCard(c:GameCard,selected:Boolean,onClick:()->Unit){Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(paper).border(if(selected)2.dp else 1.dp,if(selected)accent else edge,RoundedCornerShape(14.dp)).clickable{onClick()}.padding(11.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(c.rarity,fontSize=8.sp,color=tier(c.rarity),fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));if(selected)Text("IN TEAM ✓",fontSize=8.sp,color=accent,fontWeight=FontWeight.Bold)};Box(Modifier.fillMaxWidth().height(78.dp),contentAlignment=Alignment.Center){Text(c.emoji,fontSize=49.sp)};Text(c.name,fontWeight=FontWeight.Bold,color=ink,fontSize=14.sp);Text(c.type,fontSize=9.sp,color=muted);Row(Modifier.padding(top=7.dp)){Text("♥ "+c.hp,fontSize=10.sp,color=ink,modifier=Modifier.weight(1f));Text("⚔ "+c.attack,fontSize=10.sp,color=accent,fontWeight=FontWeight.Bold)}}}
+@Composable private fun BattleSide(name:String,emoji:String,hp:Int){Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(paper).border(1.dp,edge,RoundedCornerShape(15.dp)).padding(14.dp)){Row(verticalAlignment=Alignment.CenterVertically){Text(emoji,fontSize=38.sp);Spacer(Modifier.width(12.dp));Column{Text(name,fontWeight=FontWeight.Bold,color=ink,fontSize=12.sp);Text(hp.toString()+" / 100 HP",fontSize=10.sp,color=muted)}};Spacer(Modifier.height(8.dp));LinearProgressIndicator(progress={hp/100f},modifier=Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(8.dp)),color=if(hp<30)accent else Color(0xFF78845B),trackColor=edge)}}
+@Composable private fun ShopRow(emoji:String,title:String,desc:String,price:String,onClick:()->Unit){Row(Modifier.fillMaxWidth().padding(vertical=6.dp).clip(RoundedCornerShape(13.dp)).background(paper).border(1.dp,edge,RoundedCornerShape(13.dp)).padding(12.dp),verticalAlignment=Alignment.CenterVertically){Text(emoji,fontSize=28.sp);Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(title,fontWeight=FontWeight.Bold,color=ink,fontSize=13.sp);Text(desc,color=muted,fontSize=10.sp)};TextButton(onClick=onClick){Text(price,color=accent,fontWeight=FontWeight.Bold,fontSize=10.sp)}}}
